@@ -16,8 +16,8 @@ FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TOR
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ]]--
 
-local path_to_obj = './logic/teapot.obj'  -- CHANGE THESE OPTIONS HERE
-local save_path = './logic/teapot.buffer' -- <------------------------
+local path_to_obj = './a.obj'  -- CHANGE THESE OPTIONS HERE
+local save_path = './b.buffer' -- <------------------------
 local wireframe = true					 -- use with the Lines primitive type
 
 local function add_vertex(self, vert)
@@ -63,6 +63,14 @@ local function parse_obj(self)
 				table.insert(vector, tonumber(w))
 			end
 			local vertex = { x = vector[1], y = vector[2], z = vector[3] }
+			-- scan for AABB min/max
+			if vector[1] < tonumber(self.bb_min.x) then self.bb_min.x = tostring(vector[1]) end
+			if vector[1] > tonumber(self.bb_max.x) then self.bb_max.x = tostring(vector[1]) end
+			if vector[2] < tonumber(self.bb_min.y) then self.bb_min.y = tostring(vector[2]) end
+			if vector[2] > tonumber(self.bb_max.y) then self.bb_max.y = tostring(vector[2]) end
+			if vector[3] < tonumber(self.bb_min.z) then self.bb_min.z = tostring(vector[3]) end
+			if vector[3] > tonumber(self.bb_max.z) then self.bb_max.z = tostring(vector[3]) end
+
 			table.insert(self.verts, vertex)
 		elseif string.sub(line, 1, 2) == 'vt' then
 			local coord = {}
@@ -102,7 +110,7 @@ end
 
 local function write_buffer(self)
 	local output = ''
-	local a = ']},{"name":"'
+	local a = ']},\n{"name":"'
 	local b = '","type":"float32","count":'
 	local c = ',"data":['
 	output = output .. '[{"name":"position' .. b .. '3' .. c
@@ -141,6 +149,10 @@ local function write_buffer(self)
 			output = output .. ','
 		end
 	end
+	-- record AABB values in dummy stream to copy to a script
+	output = output .. a .. 'aabb' .. b .. '3' .. c
+	output = output .. self.bb_min.x .. ',' .. self.bb_min.y .. ',' .. self.bb_min.z .. ','
+	output = output .. self.bb_max.x .. ',' .. self.bb_max.y .. ',' .. self.bb_max.z
 	output = output .. ']}]'
 
 	local file = io.open(save_path, 'w')
@@ -157,6 +169,8 @@ function init(self)
 	self.vert_write = {}
 	self.uv_write = {}
 	self.norm_write = {}
+	self.bb_min = { x = '0', y = '0', z = '0' }
+	self.bb_max = { x = '0', y = '0', z = '0' }
 
 	-- parse OBJ file and write vertex buffer file
 	parse_obj(self)
