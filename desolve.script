@@ -1,0 +1,164 @@
+--[[
+Desolve ('dissolve') - Conversion from OBJ to Defold mesh vertex buffer, for wireframe rendering
+
+Copyright 2024 Baron Wittman
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files
+(the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to
+do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+]]--
+
+local path_to_obj = './logic/teapot.obj'  -- CHANGE THESE OPTIONS HERE
+local save_path = './logic/teapot.buffer' -- <------------------------
+local wireframe = true					 -- use with the Lines primitive type
+
+local function add_vertex(self, vert)
+	table.insert(self.vert_write, tonumber(vert.v))
+	table.insert(self.uv_write, tonumber(vert.t))
+	table.insert(self.norm_write, tonumber(vert.n))
+end
+
+local function triangles(self, face)
+	if #face == 3 then
+		-- triangle
+		for v = 1, #face do
+			table.insert(self.vert_write, tonumber(face[v].v))
+			table.insert(self.uv_write, tonumber(face[v].t))
+			table.insert(self.norm_write, tonumber(face[v].n))
+		end
+	elseif #face == 4 then
+		-- quad
+		local order = (math.random() > 0.5) and { 1, 2, 3, 1, 3, 4 } or { 1, 2, 4, 2, 3, 4 }
+		for i = 1, #order do
+			add_vertex(self, face[order[i]])
+		end
+	else
+		error('face is not a triangle or quad')
+	end
+end
+
+local function lines(self, face)
+	for i = 1, #face do
+		add_vertex(self, face[i])
+		if i > 1 then
+			add_vertex(self, face[i])
+		end
+	end
+	add_vertex(self, face[1])
+end
+
+local function parse_obj(self)
+	for line in io.lines(path_to_obj) do
+		if string.sub(line, 1, 2) == 'v ' then
+			local vector = {}
+			for w in string.gmatch(string.sub(line, 3), '%S+') do
+				table.insert(vector, tonumber(w))
+			end
+			local vertex = { x = vector[1], y = vector[2], z = vector[3] }
+			table.insert(self.verts, vertex)
+		elseif string.sub(line, 1, 2) == 'vt' then
+			local coord = {}
+			for w in string.gmatch(string.sub(line, 3), '%S+') do
+				table.insert(coord, tonumber(w))
+			end
+			local uv = { u = coord[1], v = coord[2] }
+			table.insert(self.uvs, uv)
+		elseif string.sub(line, 1, 2) == 'vn' then
+			local norm_tab = {}
+			for w in string.gmatch(string.sub(line, 3), '%S+') do
+				table.insert(norm_tab, tonumber(w))
+			end
+			local normal = { x = norm_tab[1], y = norm_tab[2], z = norm_tab[3] }
+			if vmath.length(vmath.vector3(normal.x, normal.y, normal.z)) < 0.5 then
+				normal = { x = 0, y = 1, z = 0 }
+			end
+			table.insert(self.norms, normal)
+		elseif string.sub(line, 1, 2) == 'f ' then
+			local face = {}
+			for w in string.gmatch(string.sub(line, 3), '%S+') do
+				local v, t, n = string.match(w, '(%d+)%/(%d*)%/(%d*)')
+				if t == '' then t = 0 end
+				if n == '' then n = 0 end
+				local face_tab = { v = v, t = t, n = n }
+				table.insert(face, face_tab)
+			end
+
+			if wireframe then
+				lines(self, face)
+			else
+				triangles(self, face)
+			end
+		end
+	end
+end
+
+local function write_buffer(self)
+	local output = ''
+	local a = ']},{"name":"'
+	local b = '","type":"float32","count":'
+	local c = ',"data":['
+	output = output .. '[{"name":"position' .. b .. '3' .. c
+	for i, value in ipairs(self.vert_write) do
+		output = output .. self.verts[value].x .. ',' .. self.verts[value].y .. ',' .. self.verts[value].z
+		if i < #self.vert_write then
+			output = output .. ','
+		end
+	end
+	output = output .. a .. 'normal' .. b .. '3' .. c
+	for i, value in ipairs(self.norm_write) do
+		if value > 0 then
+			output = output .. self.norms[value].x .. ',' .. self.norms[value].y .. ',' .. self.norms[value].z
+		else
+			output = output .. '0.0,1.0,0.0'
+		end
+		if i < #self.norm_write then
+			output = output .. ','
+		end
+	end
+	output = output .. a .. 'texcoord0' .. b .. '2' .. c
+	for i, value in ipairs(self.uv_write) do
+		if value > 0 then
+			output = output .. self.uvs[value].u .. ',' .. self.uvs[value].v
+		else
+			output = output .. '0.0,0.0'
+		end
+		if i < #self.uv_write then
+			output = output .. ','
+		end
+	end
+	output = output .. a .. 'color0' .. b .. '4' .. c
+	for i, value in ipairs(self.norm_write) do
+		output = output .. '1.0,1.0,1.0,1.0'
+		if i < #self.norm_write then
+			output = output .. ','
+		end
+	end
+	output = output .. ']}]'
+
+	local file = io.open(save_path, 'w')
+	if file then
+		file:write(output)
+		file:close()
+	end
+end
+
+function init(self)
+	self.verts = {}
+	self.uvs = {}
+	self.norms = {}
+	self.vert_write = {}
+	self.uv_write = {}
+	self.norm_write = {}
+
+	-- parse OBJ file and write vertex buffer file
+	parse_obj(self)
+	write_buffer(self)
+end
