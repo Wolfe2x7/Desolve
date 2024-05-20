@@ -16,3 +16,5 @@ end
 ```
 
 Note: This script may not work with older/unusual OBJ formats.
+
+![box](https://github.com/Wolfe2x7/Desolve/assets/72348938/a9018291-340b-43a0-9218-a781ab89f23f)
