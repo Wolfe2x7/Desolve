@@ -149,11 +149,12 @@ local function write_buffer(self)
 			output = output .. ','
 		end
 	end
-	-- record AABB values in dummy stream to copy to a script
-	output = output .. a .. 'aabb' .. b .. '3' .. c
-	output = output .. self.bb_min.x .. ',' .. self.bb_min.y .. ',' .. self.bb_min.z .. ','
-	output = output .. self.bb_max.x .. ',' .. self.bb_max.y .. ',' .. self.bb_max.z
 	output = output .. ']}]'
+	-- print AABB values to copy to a script
+	local aabb = 'AABB for this mesh: '
+	aabb = aabb .. self.bb_min.x .. ', ' .. self.bb_min.y .. ', ' .. self.bb_min.z .. ', '
+	aabb = aabb .. self.bb_max.x .. ', ' .. self.bb_max.y .. ', ' .. self.bb_max.z
+	print(aabb)
 
 	local file = io.open(save_path, 'w')
 	if file then
