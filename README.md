@@ -4,7 +4,7 @@ Run a copy of this script inside your project to convert a 3D model in OBJ forma
 
 Change the variables in the script to input your OBJ file and desired output filename.
 
-The buffer file will include a dummy stream named "aabb", containing the extents of the OBJ model. Copy and paste those values to a script to enable frustum culling for your new mesh, like this example:
+When the process is complete, the extents of the OBJ model will be printed to the console, defining its AABB (axis-aligned bounding box). Copy and paste those values to a script to enable frustum culling for your new mesh, like this example:
 ```
 function init(self)
 	-- set AABB for mesh
