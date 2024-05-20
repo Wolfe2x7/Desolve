@@ -142,7 +142,7 @@ local function write_buffer(self)
 			output = output .. ','
 		end
 	end
-	output = output .. a .. 'color0' .. b .. '4' .. c
+	output = output .. a .. 'color' .. b .. '4' .. c
 	for i, value in ipairs(self.norm_write) do
 		output = output .. '1.0,1.0,1.0,1.0'
 		if i < #self.norm_write then
