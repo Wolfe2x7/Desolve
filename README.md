@@ -15,4 +15,4 @@ function init(self)
 end
 ```
 
-Note: This may not work with older/unusual OBJ formats.
+Note: This script may not work with older/unusual OBJ formats.
